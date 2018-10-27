@@ -1,17 +1,11 @@
 import discord
-import asyncio
-import ujson
 import os
 
-from error_messages import errorMessages
+from bot.utils.error_messages import errorMessages
+from bot.libs.worker.workers import Workers
+from bot import config
 
-CONFIG_FILE = os.environ.get('BOT_CONFIG_FILE')
-
-if CONFIG_FILE:
-    with open(CONFIG_FILE) as file_pointer:
-        config = ujson.load(file_pointer)
-else:
-    config = {}
+workers_collection = Workers(**config.get("mongo", {}))
 
 client = discord.Client()
 
@@ -72,10 +66,20 @@ async def on_message(message):
         await client.send_message(targeted_channel, f"See you tomorrow {message.author.mention}!")
         return
 
-    elif message.content.lower().startswith("!remember"): #When user creates an appointment
-        msg = f"New appointment scheduled for {message.author.mention}."
-        await client.send_message(message.channel, msg)
+    # elif message.content.lower().startswith("!remember"): #When user creates an appointment
+    #     msg = f"New appointment scheduled for {message.author.mention}."
+    #     await client.send_message(message.channel, msg)
+    #     return
+
+    elif message.content.lower().startswith("!register"): #When user register himself to the database
+        user_ = await client.get_user_info(message.author.id)
+        user_ = workers_collection.create_worker(user_)
+        if user_['status'] == 'error':
+            await client.send_message(message.channel, errorMessages[user_['code']].format(message.author.mention))
+            return
+        await client.send_message(message.channel, user_['msg'].format(message.author.mention))
         return
+
 
     elif message.content.lower().startswith("!roles"): #Show roles
         embed = discord.Embed(
