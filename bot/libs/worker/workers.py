@@ -18,3 +18,7 @@ class Workers(BaseMongo):
         }
         self.workers.insert_one(new_user)
         return {"status": "success", "msg": "User {} has been successfully registered!"}
+
+    def get_user(self, user_id):
+        user_ = self.workers.find_one({'_id': user_id})
+        return user_

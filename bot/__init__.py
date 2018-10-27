@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import, unicode_literals, division
+
 import os
 import ujson
 
@@ -9,4 +12,4 @@ if CONFIG_FILE:
 else:  # pragma: no cover
     config = {}
     raise Exception(
-        "You didn't set \"CORNETEIROS_CONFIG_FILE\" enviroment variable")
+        "You didn't set \"BOT_CONFIG_FILE\" enviroment variable")

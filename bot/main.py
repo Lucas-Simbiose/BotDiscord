@@ -3,9 +3,11 @@ import os
 
 from bot.utils.error_messages import errorMessages
 from bot.libs.worker.workers import Workers
+from bot.libs.worker.queue_work import QueueWorkers
 from bot import config
 
 workers_collection = Workers(**config.get("mongo", {}))
+queue_workers_collections = QueueWorkers(**config.get("mongo", {}))
 
 client = discord.Client()
 
@@ -54,7 +56,11 @@ async def on_message(message):
             msg = f"{errorMessages[1000]} {message.author.mention}"
             await client.send_message(message.channel, msg)
             return
-        await client.send_message(targeted_channel, f"Welcome to work {message.author.mention}!")
+        result = queue_workers_collections.add_worker(message.author.id)
+        if result['status'] == 'error':
+            await client.send_message(message.channel, errorMessages[result['code']].format(message.author.mention))
+            return
+        await client.send_message(targeted_channel, result['msg'].format(message.author.mention))
         return
 
     elif message.content.lower().startswith("!leaving"): #When user leaves work
@@ -63,7 +69,24 @@ async def on_message(message):
             msg = f"{errorMessages[1000]} {message.author.mention}"
             await client.send_message(message.channel, msg)
             return
-        await client.send_message(targeted_channel, f"See you tomorrow {message.author.mention}!")
+        result = queue_workers_collections.remove_worker(message.author.id)
+        if result['status'] == 'error':
+            await client.send_message(message.channel, errorMessages[result['code']].format(message.author.mention))
+            return
+        await client.send_message(targeted_channel, result['msg'].format(message.author.mention))
+        return
+
+    elif message.content.lower().startswith("!check workers"): #Get everyone who is working right now
+        targeted_channel = client.get_channel("505587406615871498")  # entry channel
+        if not check_right_channel(message.channel, targeted_channel):
+            msg = f"{errorMessages[1000]} {message.author.mention}"
+            await client.send_message(message.channel, msg)
+            return
+        result = queue_workers_collections.check_active_workers()
+        if result['status'] == 'error':
+            await client.send_message(message.channel, errorMessages[result['code']].format(message.author.mention))
+            return
+        await client.send_message(targeted_channel, result['msg'].format(message.author.mention))
         return
 
     # elif message.content.lower().startswith("!remember"): #When user creates an appointment
@@ -140,19 +163,5 @@ def check_right_channel(sent_channel, expected_channel):
     if sent_channel == expected_channel:
         return True
     return False
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 client.run(config["token"])
